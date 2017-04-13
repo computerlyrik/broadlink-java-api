@@ -23,6 +23,8 @@
  *******************************************************************************/
 package com.github.mob41.blapi.pkt;
 
+import javax.xml.bind.DatatypeConverter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,7 +147,9 @@ public class CmdPacket implements Packet {
 		
 		data[0x20] = (byte) (checksum & 0xff);
 		data[0x21] = (byte) (checksum >> 8);
-		
+
+		log.debug("Sending command packet {}", DatatypeConverter.printHexBinary(data));
+
 		log.debug("End of CmdPacket constructor");
 	}
 

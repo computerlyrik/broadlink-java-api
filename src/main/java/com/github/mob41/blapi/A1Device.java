@@ -26,6 +26,7 @@ package com.github.mob41.blapi;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
+import java.util.Arrays;
 
 import javax.xml.bind.DatatypeConverter;
 
@@ -130,42 +131,45 @@ public class A1Device extends BLDevice {
 		});
 		byte[] data = packet.getData();
 		
-		log.debug("checkSensors Packet received bytes: {}", DatatypeConverter.printHexBinary(data));
+		log.debug("checkSensors Packet received {} bytes: {}", data.length, DatatypeConverter.printHexBinary(data));
 		
 		int err = data[0x22] | (data[0x23] << 8);
 		
 		if (err == 0) {
+			byte[] message = Arrays.copyOfRange(data, 38, data.length);
+			log.debug("checkSensors encrypted message ({}): {}", message.length, DatatypeConverter.printHexBinary(message));
+
 			AES aes = new AES(getIv(), getKey());
-			byte[] pl = aes.decrypt(data);
-			log.debug("checkSensors Packet received bytes (decrypted): {}", DatatypeConverter.printHexBinary(pl));
+			byte[] payload = aes.decrypt(message);
+			log.debug("checkSensors decrypted message ({}): {}", payload.length, DatatypeConverter.printHexBinary(payload));
 			EnvironmentalSensorRaw sensorData = new EnvironmentalSensorRaw();
-			if(pl[0x4] >= 48 && pl[0x4] <= 57) {
+			if(payload[0x4] >= 48 && payload[0x4] <= 57) {
 				String decodeValue1;
 				String decodeValue2;
 				byte value1;
 				byte value2;
-				decodeValue1 = String.valueOf(pl[0x4]);
-				decodeValue2 = String.valueOf(pl[0x5]);
+				decodeValue1 = String.valueOf(payload[0x4]);
+				decodeValue2 = String.valueOf(payload[0x5]);
 				value1 = Short.decode(decodeValue1).byteValue();
 				value2 = Short.decode(decodeValue2).byteValue();
 				sensorData.setTemperature((float)((value1 * 10 + value2) / 10.0));
-				decodeValue1 = String.valueOf(pl[0x6]);
-				decodeValue2 = String.valueOf(pl[0x7]);
+				decodeValue1 = String.valueOf(payload[0x6]);
+				decodeValue2 = String.valueOf(payload[0x7]);
 				value1 = Short.decode(decodeValue1).byteValue();
 				value2 = Short.decode(decodeValue2).byteValue();
 				sensorData.setHumidity((float)((value1 * 10 + value2) / 10.0));
-				decodeValue1 = String.valueOf(pl[0x8]);
+				decodeValue1 = String.valueOf(payload[0x8]);
 				sensorData.setLight(Short.decode(decodeValue1).byteValue());
-				decodeValue1 = String.valueOf(pl[0x0a]);
+				decodeValue1 = String.valueOf(payload[0x0a]);
 				sensorData.setAirquality(Short.decode(decodeValue1).byteValue());
-				decodeValue1 = String.valueOf(pl[0xc]);
+				decodeValue1 = String.valueOf(payload[0xc]);
 				sensorData.setNoise(Short.decode(decodeValue1).byteValue());
 			} else {
-				sensorData.setTemperature((float)((pl[0x4] * 10 + pl[0x5]) / 10.0));
-				sensorData.setHumidity((float)((pl[0x6] * 10 + pl[0x7]) / 10.0));
-				sensorData.setLight(pl[0x8]);
-				sensorData.setAirquality(pl[0x0a]);
-				sensorData.setNoise(pl[0xc]);
+				sensorData.setTemperature((float)((payload[0x4] * 10 + payload[0x5]) / 10.0));
+				sensorData.setHumidity((float)((payload[0x6] * 10 + payload[0x7]) / 10.0));
+				sensorData.setLight(payload[0x8]);
+				sensorData.setAirquality(payload[0x0a]);
+				sensorData.setNoise(payload[0xc]);
 			}
 			return sensorData;
 		} else {
